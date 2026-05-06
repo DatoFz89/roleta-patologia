@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roleta — Patologia Clínica</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:#0a1628;font-family:system-ui,sans-serif}
+body{display:flex;align-items:flex-start;justify-content:center;min-height:100vh}
+
+#app{
+  width:100%;min-height:100vh;
+  padding:1.4rem 1.4rem 2rem;
+  background:linear-gradient(135deg,#0a1628 0%,#0d2444 40%,#0a1e3a 70%,#0d1f3c 100%);
+  position:relative;overflow:hidden
+}
+#app::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse at 20% 50%,rgba(55,138,221,0.12) 0%,transparent 60%),
+    radial-gradient(ellipse at 80% 50%,rgba(29,158,117,0.10) 0%,transparent 60%)
+}
+
+/* STARS */
+.stars{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.star{position:absolute;background:#fff;border-radius:50%;animation:twinkle 3s infinite alternate}
+@keyframes twinkle{0%{opacity:.1}100%{opacity:.7}}
+
+/* FULLSCREEN BTN */
+#fsBtn{
+  position:absolute;top:14px;right:14px;z-index:30;
+  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);
+  color:#fff;border-radius:10px;padding:8px 16px;font-size:15px;
+  cursor:pointer;display:flex;align-items:center;gap:7px;transition:background .15s
+}
+#fsBtn:hover{background:rgba(255,255,255,0.22)}
+#fsBtn svg{width:18px;height:18px;flex-shrink:0}
+
+/* HEADER */
+h1{font-size:24px;font-weight:600;color:#fff;text-align:center;margin-bottom:4px;letter-spacing:.5px}
+.subtitle{font-size:14px;color:rgba(255,255,255,.55);text-align:center;margin-bottom:1rem}
+
+/* SCORE BAR */
+.score-bar{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:1rem}
+.score-item{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:8px 20px;text-align:center}
+.score-item span{display:block;font-size:24px;font-weight:600;color:#fff}
+.score-item label{font-size:12px;color:rgba(255,255,255,.5)}
+
+/* MAIN LAYOUT */
+.main-layout{display:flex;align-items:center;justify-content:center;gap:2rem;flex-wrap:wrap}
+
+/* WHEEL */
+.wheel-section{display:flex;flex-direction:column;align-items:center;gap:1rem}
+.canvas-wrap{position:relative;width:480px;height:480px;flex-shrink:0}
+canvas{border-radius:50%;display:block;box-shadow:0 0 60px rgba(55,138,221,.3),0 0 120px rgba(55,138,221,.1)}
+.pointer-wrap{position:absolute;top:50%;left:-26px;transform:translateY(-50%);z-index:10}
+.pointer-wrap svg{filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
+.center-hub{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:54px;height:54px;border-radius:50%;background:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+  box-shadow:0 0 14px rgba(0,0,0,.4);z-index:5
+}
+.spin-btn{
+  padding:14px 52px;font-size:19px;font-weight:600;cursor:pointer;
+  border-radius:40px;border:none;
+  background:linear-gradient(135deg,#378ADD,#185FA5);color:#fff;
+  box-shadow:0 4px 20px rgba(55,138,221,.4);transition:transform .15s,box-shadow .15s
+}
+.spin-btn:hover{transform:scale(1.04);box-shadow:0 6px 28px rgba(55,138,221,.55)}
+.spin-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.conf-msg{text-align:center;font-size:15px;color:rgba(255,255,255,.7);margin-top:.3rem}
+
+/* POPUP */
+.popup-area{width:480px;min-height:480px;max-height:calc(100vh - 200px);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;align-self:flex-start}
+.balloon-wrap{position:relative;width:100%;animation:popIn .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.balloon{
+  background:#fff;border-radius:26px;border:1px solid #ddd;
+  padding:2rem 2rem 1.6rem;position:relative;
+  box-shadow:0 10px 50px rgba(0,0,0,.35);width:100%
+}
+/* seta do balão apontar para a roleta (direita) */
+.balloon::after{
+  content:'';position:absolute;right:-22px;top:50%;transform:translateY(-50%);
+  border-width:13px 0 13px 22px;border-style:solid;
+  border-color:transparent transparent transparent #fff;
+  filter:drop-shadow(3px 0 2px rgba(0,0,0,.08))
+}
+
+.badge{display:inline-block;font-size:17px;font-weight:700;padding:7px 18px;border-radius:20px;margin-bottom:14px}
+.badge-name{background:#EAF3DE;color:#27500A}
+.badge-q{background:#E6F1FB;color:#0C447C}
+
+.balloon h3{font-size:26px;font-weight:700;color:#111;margin-bottom:16px;line-height:1.35}
+.big-name{font-size:64px;font-weight:800;color:#185FA5;text-align:center;padding:16px 0;letter-spacing:1px}
+.name-hint{font-size:22px;color:#555;text-align:center;margin-top:10px;font-weight:500}
+
+.opts{display:flex;flex-direction:column;gap:11px;margin-bottom:16px}
+.opt-btn{
+  text-align:left;padding:15px 20px;
+  border:2px solid #ccc;border-radius:10px;
+  background:#fafafa;color:#111;
+  font-size:21px;cursor:pointer;line-height:1.4;font-weight:500;
+  transition:background .1s
+}
+.opt-btn:hover:not(:disabled){background:#f0f0f0}
+.opt-btn:disabled{cursor:default}
+.opt-btn.correct{background:#EAF3DE;border-color:#639922;color:#1a4000;font-weight:700}
+.opt-btn.wrong{background:#FCEBEB;border-color:#E24B4A;color:#4a0000}
+
+.exp-box{
+  background:#FFFBEA;border:2px solid #F9A825;border-radius:10px;
+  padding:20px;font-size:26px;color:#3a2800;line-height:1.6;
+  margin-bottom:14px;display:none;font-weight:500
+}
+
+.balloon-btn{
+  display:block;width:100%;padding:16px;border-radius:10px;
+  border:2px solid #ccc;background:#fafafa;color:#111;
+  font-size:20px;font-weight:600;cursor:pointer;text-align:center;
+  transition:background .1s
+}
+.balloon-btn:hover{background:#f0f0f0}
+
+.waiting-hint{font-size:22px;color:#c8dff5;padding:18px 32px;background:rgba(55,138,221,0.18);border:1px solid rgba(55,138,221,0.35);border-radius:16px;overflow:hidden;white-space:nowrap;width:100%;max-width:480px}
+.waiting-hint span{display:inline-block;animation:marqueeScroll 14s linear infinite;padding-left:100%}
+@keyframes marqueeScroll{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
+
+/* FIM OVERLAY */
+.fim-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.78);
+  display:flex;align-items:center;justify-content:center;z-index:1000;
+  animation:fadeIn .4s ease
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.fim-box{
+  background:#fff;border-radius:28px;padding:2.8rem 3.2rem;
+  text-align:center;box-shadow:0 20px 80px rgba(0,0,0,.5);
+  max-width:500px;width:90%;animation:popIn .5s cubic-bezier(.34,1.56,.64,1)
+}
+.fim-trophy{font-size:80px;margin-bottom:1rem;display:block}
+.fim-title{font-size:36px;font-weight:800;color:#0d2444;margin-bottom:.5rem}
+.fim-sub{font-size:22px;color:#444;margin-bottom:1.8rem}
+.fim-stats{display:flex;gap:1.5rem;justify-content:center;margin-bottom:2rem;flex-wrap:wrap}
+.fim-stat{background:#f0f4ff;border-radius:14px;padding:16px 26px;text-align:center}
+.fim-stat strong{display:block;font-size:36px;color:#185FA5;font-weight:800}
+.fim-stat small{font-size:15px;color:#555}
+.fim-btn{
+  padding:16px 52px;font-size:20px;font-weight:700;cursor:pointer;
+  border-radius:40px;border:none;
+  background:linear-gradient(135deg,#378ADD,#185FA5);color:#fff;
+  box-shadow:0 4px 20px rgba(55,138,221,.4);transition:transform .15s
+}
+.fim-btn:hover{transform:scale(1.04)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="stars" id="starsContainer"></div>
+
+  <button id="fsBtn" onclick="toggleFullscreen()">
+    <svg id="fsIconSvg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+      <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+    </svg>
+    <span id="fsLabel">Ecrã inteiro</span>
+  </button>
+
+  <h1>🎡 Roleta — Patologia Clínica</h1>
+  <p class="subtitle">Gira a roleta · Sorteia um colega · Sorteia a questão</p>
+
+  <div class="score-bar">
+    <div class="score-item"><span id="sc-total">0</span><label>Rodadas</label></div>
+    <div class="score-item"><span id="sc-correct">0</span><label>Corretas ✓</label></div>
+    <div class="score-item"><span id="sc-wrong">0</span><label>Erradas ✗</label></div>
+    <div class="score-item"><span id="sc-pct">—</span><label>Taxa</label></div>
+  </div>
+
+  <div class="main-layout">
+    <div class="wheel-section">
+      <div class="canvas-wrap">
+        <canvas id="wheel" width="480" height="480"></canvas>
+        <div class="center-hub">🎡</div>
+        <div class="pointer-wrap">
+          <svg width="36" height="36" viewBox="0 0 28 28">
+            <polygon points="28,14 0,4 6,14 0,24" fill="#E24B4A" stroke="#fff" stroke-width="1.5"/>
+          </svg>
+        </div>
+      </div>
+      <button class="spin-btn" id="spinBtn">🎲 Girar</button>
+      <p class="conf-msg" id="confMsg"></p>
+    </div>
+
+    <div class="popup-area" id="popupArea">
+      <p class="waiting-hint"><span>Gira a roleta para sortear um colega e depois a questão</span></p>
+    </div>
+  </div>
+</div>
+
+<script>
+const QUESTIONS=[
+  {q:"Qual é a principal função da Patologia Clínica?",opts:["Realizar cirurgias aos utentes","Analisar amostras biológicas para apoiar o diagnóstico","Prescrever medicamentos aos doentes","Gerir os recursos humanos do hospital"],correct:1,exp:"A Patologia Clínica analisa amostras biológicas (sangue, urina, fezes, etc.) para apoiar o diagnóstico, monitorizar tratamentos e rastrear doenças."},
+  {q:"Que percentagem das decisões clínicas se baseia em resultados laboratoriais?",opts:["30%","50%","70%","90%"],correct:2,exp:"Cerca de 70% das decisões clínicas baseiam-se em resultados laboratoriais, sublinhando a importância vital da Patologia Clínica."},
+  {q:"Qual é a ordem correta das fases do processo laboratorial?",opts:["Analítica → Pré-analítica → Pós-analítica","Pré-analítica → Analítica → Pós-analítica","Pós-analítica → Analítica → Pré-analítica","Pré-analítica → Pós-analítica → Analítica"],correct:1,exp:"O processo segue sempre: Pré-analítica (colheita, transporte) → Analítica (análise) → Pós-analítica (validação e comunicação)."},
+  {q:"Qual é o setor responsável pela identificação de bactérias e antibiogramas?",opts:["Hematologia","Bioquímica","Imunologia","Microbiologia"],correct:3,exp:"A Microbiologia identifica bactérias, vírus e fungos, incluindo uroculturas, hemoculturas e antibiogramas."},
+  {q:"O que deve conter uma requisição médica?",opts:["Apenas o nome do utente e as análises","Nome, data de nascimento, nº SNS, diagnóstico e análises a realizar","Nome e telefone do médico","Só o diagnóstico e o nº de utente"],correct:1,exp:"A requisição deve conter: nome, data de nascimento, nº SNS, diagnóstico suspeito e análises a realizar — em papel ou eletrónico."},
+  {q:"Qual dos seguintes tubos de colheita é usado para o hemograma?",opts:["Tubo gel amarelo","Tubo citrato azul","Tubo EDTA violeta","Tubo fluoreto cinzento"],correct:2,exp:"O tubo EDTA violeta é usado para o hemograma. O gel amarelo serve para bioquímica/hormonas e o citrato azul para coagulação."},
+  {q:"Qual é a temperatura de conservação da maioria das amostras no transporte?",opts:["-20°C","4°C","37°C","Temperatura ambiente"],correct:1,exp:"A maioria das amostras deve ser transportada a 4°C para manter a integridade. Não se devem congelar amostras a processar frescas."},
+  {q:"O que significa a sigla LIS no contexto laboratorial?",opts:["Laboratory Imaging System","Laboratory Information System","Liquid Identification Software","Laboratory Integration Service"],correct:1,exp:"LIS = Laboratory Information System — gere o fluxo de trabalho, rastreabilidade das amostras e comunicação com o sistema hospitalar."},
+  {q:"Qual é a função principal do TAS na fase pré-analítica?",opts:["Centrifugar e aliquotar as amostras","Validar clinicamente os resultados","Acolher o utente, verificar identidade e transportar amostras","Analisar amostras no analisador bioquímico"],correct:2,exp:"O TAS acolhe o utente, verifica identidade, regista no sistema, prepara material de colheita e assegura o transporte correto."},
+  {q:"Onde devem ser depositadas agulhas usadas no laboratório?",opts:["Saco biohazard branco (Grupo III)","Contentor rígido amarelo (Grupo IV)","Lixo comum (Grupo I)","Saco negro de resíduos hospitalares"],correct:1,exp:"Agulhas e cortantes são resíduos Grupo IV — contentor rígido amarelo. O saco branco Grupo III é para resíduos biológicos não cortantes."}
+];
+
+const NAMES=["Carlos","Célia","Gabriel","Gisela","Goreti","Manuela","Márcia","Mariana","Peixoto","Sandra"];
+const COLORS=[
+  ["#378ADD","#185FA5"],["#1D9E75","#0F6E56"],["#D85A30","#993C1D"],
+  ["#D4537E","#993556"],["#7F77DD","#534AB7"],["#BA7517","#854F0B"],
+  ["#E24B4A","#A32D2D"],["#5DCAA5","#0F6E56"],["#639922","#3B6D11"],
+  ["#888780","#5F5E5A"]
+];
+
+const canvas=document.getElementById('wheel');
+const ctx=canvas.getContext('2d');
+const N=10, arc=(2*Math.PI)/N, CW=480;
+
+let spinning=false, phase=0, currentAngle=0;
+let totalR=0, correctC=0, wrongC=0;
+let usedQ=[], usedN=[];
+let pendingName='', pendingQ=null;
+
+/* --- ESTRELAS --- */
+(function(){
+  const cont=document.getElementById('starsContainer');
+  for(let i=0;i<60;i++){
+    const s=document.createElement('div');
+    s.className='star';
+    const sz=Math.random()*2+1;
+    s.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*3}s`;
+    cont.appendChild(s);
+  }
+})();
+
+/* --- ÁUDIO --- */
+const AudioCtx=window.AudioContext||window.webkitAudioContext;
+let actx=null;
+function getACtx(){if(!actx)actx=new AudioCtx();return actx;}
+
+function playTick(){try{const a=getACtx(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.type='sine';o.frequency.setValueAtTime(800,a.currentTime);g.gain.setValueAtTime(0.06,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.04);o.start();o.stop(a.currentTime+0.04);}catch(e){}}
+function playPop(){try{const a=getACtx(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.type='sine';o.frequency.setValueAtTime(440,a.currentTime);o.frequency.exponentialRampToValueAtTime(880,a.currentTime+0.1);g.gain.setValueAtTime(0.15,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.15);o.start();o.stop(a.currentTime+0.15);}catch(e){}}
+function playWin(){try{const a=getACtx();[523,659,784,1047].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.type='sine';o.frequency.value=f;const t=a.currentTime+i*0.12;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.18,t+0.03);g.gain.exponentialRampToValueAtTime(0.001,t+0.25);o.start(t);o.stop(t+0.25);});}catch(e){}}
+function playWrong(){try{const a=getACtx();[330,220].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.type='sawtooth';o.frequency.value=f;const t=a.currentTime+i*0.15;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.1,t+0.03);g.gain.exponentialRampToValueAtTime(0.001,t+0.2);o.start(t);o.stop(t+0.2);});}catch(e){}}
+function playFanfare(){
+  try{
+    const a=getACtx();
+    [523,659,784,1047,784,1047,1047,1319].forEach((f,i)=>{
+      const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);
+      o.type='sine';o.frequency.value=f;
+      const t=a.currentTime+[0,.15,.30,.45,.65,.80,1.00,1.15][i];
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.22,t+0.04);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.28);o.start(t);o.stop(t+0.3);
+    });
+    [523,659,784].forEach(f=>{
+      const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);
+      o.type='sine';o.frequency.value=f;const t=a.currentTime+1.5;
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.15,t+0.05);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.7);o.start(t);o.stop(t+0.75);
+    });
+  }catch(e){}
+}
+
+/* --- DESENHO DA ROLETA --- */
+function drawWheel(angle){
+  const cx=CW/2, cy=CW/2, r=CW/2-8;
+  ctx.clearRect(0,0,CW,CW);
+  for(let i=0;i<N;i++){
+    const s=angle+i*arc, e=s+arc;
+    const grad=ctx.createRadialGradient(cx,cy,70,cx,cy,r);
+    grad.addColorStop(0,COLORS[i][0]);
+    grad.addColorStop(1,COLORS[i][1]);
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,s,e);ctx.closePath();
+    ctx.fillStyle=grad;ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.7)';ctx.lineWidth=2;ctx.stroke();
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(s+arc/2);
+    ctx.textAlign='right';ctx.fillStyle='rgba(255,255,255,0.95)';
+    ctx.font='bold 16px sans-serif';
+    ctx.fillText(phase===0?NAMES[i]:'Q'+(i+1), r-16, 6);
+    ctx.restore();
+  }
+  // hub central
+  ctx.beginPath();ctx.arc(cx,cy,32,0,2*Math.PI);
+  const hg=ctx.createRadialGradient(cx-6,cy-6,2,cx,cy,32);
+  hg.addColorStop(0,'#ffffff');hg.addColorStop(1,'#e0e0e0');
+  ctx.fillStyle=hg;ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=2;ctx.stroke();
+}
+drawWheel(0);
+
+/* --- SEGMENTO SOB A SETA --- */
+function getSegmentAtPointer(angle){
+  let a=((Math.PI-angle)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+  return Math.floor(a/arc)%N;
+}
+
+/* --- ESCOLHA SEM REPETIÇÃO --- */
+function pickRandom(len,used){
+  const avail=[...Array(len).keys()].filter(i=>!used.includes(i));
+  if(!avail.length){used.length=0;return Math.floor(Math.random()*len);}
+  return avail[Math.floor(Math.random()*avail.length)];
+}
+
+/* --- GIRAR (a roleta para SEMPRE no item já sorteado) --- */
+function handleSpin(){
+  if(spinning)return;
+  getACtx();
+  spinning=true;
+  document.getElementById('spinBtn').disabled=true;
+  document.getElementById('popupArea').innerHTML='<p class="waiting-hint">A girar...</p>';
+
+  // Sortear ANTES de girar
+  let targetIdx;
+  if(phase===0){
+    targetIdx=pickRandom(NAMES.length,usedN);
+    usedN.push(targetIdx);
+  } else {
+    targetIdx=pickRandom(QUESTIONS.length,usedQ);
+    usedQ.push(targetIdx);
+  }
+
+  // Calcular ângulo de paragem exato no segmento sorteado
+  // Seta está em ângulo PI; queremos que o centro do segmento targetIdx fique sob PI
+  const segCenter=Math.PI-(targetIdx+0.5)*arc;
+  const fullSpins=(6+Math.floor(Math.random()*4))*2*Math.PI;
+  const jitter=(Math.random()-.5)*arc*0.65;
+  let delta=(segCenter+jitter-currentAngle)%(2*Math.PI);
+  if(delta<0) delta+=2*Math.PI;
+  const total=fullSpins+delta;
+
+  const dur=3800, t0=performance.now(), sa=currentAngle;
+  let lastSeg=-1, tickCount=0;
+
+  function ease(t){return 1-Math.pow(1-t,4);}
+  function animate(now){
+    const el=now-t0, t=Math.min(el/dur,1);
+    currentAngle=sa+total*ease(t);
+    drawWheel(currentAngle);
+    const seg=getSegmentAtPointer(currentAngle);
+    if(seg!==lastSeg){lastSeg=seg;tickCount++;if(tickCount>3)playTick();}
+    if(t<1){requestAnimationFrame(animate);}
+    else{
+      spinning=false;
+      drawWheel(currentAngle);
+      if(phase===0){
+        pendingName=NAMES[targetIdx];
+        showNameBalloon(pendingName);
+        phase=1;
+      } else {
+        pendingQ=QUESTIONS[targetIdx];
+        showQuestionBalloon(pendingName,pendingQ,targetIdx);
+        phase=0;
+      }
+    }
+  }
+  requestAnimationFrame(animate);
+}
+document.getElementById('spinBtn').onclick=handleSpin;
+
+/* --- BALLOON: NOME --- */
+function showNameBalloon(name){
+  playPop();
+  const area=document.getElementById('popupArea');
+  area.innerHTML='';
+  const wrap=document.createElement('div');wrap.className='balloon-wrap';
+  const bal=document.createElement('div');bal.className='balloon';
+  bal.innerHTML=`
+    <span class="badge badge-name">Colega sorteado</span>
+    <h3>É a vez de...</h3>
+    <div class="big-name">🎉 ${name}</div>
+    <p class="name-hint">Agora gira para a questão!</p>`;
+  const btn=document.createElement('button');btn.className='balloon-btn';
+  btn.style.marginTop='14px';btn.textContent='🎲 Girar para a questão →';
+  btn.onclick=handleSpin;
+  bal.appendChild(btn);
+  wrap.appendChild(bal);area.appendChild(wrap);
+}
+
+/* --- BALLOON: QUESTÃO --- */
+function showQuestionBalloon(name,q,qi){
+  playPop();
+  const area=document.getElementById('popupArea');
+  area.innerHTML='';
+  const wrap=document.createElement('div');wrap.className='balloon-wrap';
+  const bal=document.createElement('div');bal.className='balloon';
+
+  const hdr=document.createElement('div');
+  hdr.innerHTML=`<span class="badge badge-q">Questão ${qi+1}</span><h3>${q.q}</h3>`;
+  bal.appendChild(hdr);
+
+  const optsDiv=document.createElement('div');optsDiv.className='opts';
+  const expBox=document.createElement('div');expBox.className='exp-box';
+  const contBtn=document.createElement('button');contBtn.className='balloon-btn';contBtn.style.display='none';
+
+  q.opts.forEach((o,i)=>{
+    const b=document.createElement('button');b.className='opt-btn';
+    b.textContent=String.fromCharCode(65+i)+') '+o;
+    b.onclick=()=>answer(i,q.correct,optsDiv,expBox,contBtn);
+    optsDiv.appendChild(b);
+  });
+  bal.appendChild(optsDiv);
+
+  expBox.textContent='💡 '+q.exp;
+  bal.appendChild(expBox);
+
+  contBtn.textContent='Próxima rodada →';
+  contBtn.onclick=()=>{
+    phase=0;pendingName='';pendingQ=null;
+    area.innerHTML='<p class="waiting-hint"><span>Gira a roleta para sortear um colega e depois a questão</span></p>';
+    const sb=document.getElementById('spinBtn');
+    sb.disabled=false;sb.textContent='🎲 Girar';sb.onclick=handleSpin;
+    checkFinished();
+  };
+  bal.appendChild(contBtn);
+  wrap.appendChild(bal);area.appendChild(wrap);
+}
+
+/* --- RESPOSTA --- */
+function answer(chosen,correct,optsDiv,expBox,contBtn){
+  optsDiv.querySelectorAll('.opt-btn').forEach((b,i)=>{
+    b.disabled=true;
+    if(i===correct)b.classList.add('correct');
+    else if(i===chosen)b.classList.add('wrong');
+  });
+  expBox.style.display='block';
+  contBtn.style.display='block';
+  totalR++;
+  if(chosen===correct){correctC++;playWin();}else{wrongC++;playWrong();}
+  updateScore();
+}
+
+function updateScore(){
+  document.getElementById('sc-total').textContent=totalR;
+  document.getElementById('sc-correct').textContent=correctC;
+  document.getElementById('sc-wrong').textContent=wrongC;
+  document.getElementById('sc-pct').textContent=totalR>0?Math.round(correctC/totalR*100)+'%':'—';
+}
+
+function checkFinished(){
+  if(totalR>=10){
+    setTimeout(playFanfare,300);
+    showFimPopup();
+  }
+}
+
+/* --- POPUP DE FIM --- */
+function showFimPopup(){
+  const pct=Math.round(correctC/10*100);
+  let emoji='🎓',msg='Bom trabalho!';
+  if(pct>=90){emoji='🏆';msg='Excelente! Mestres da Patologia Clínica!';}
+  else if(pct>=70){emoji='🥇';msg='Muito bom resultado!';}
+  else if(pct>=50){emoji='👍';msg='Bom esforço, podem melhorar!';}
+  else{emoji='📚';msg='Hora de estudar mais!';}
+
+  const ov=document.createElement('div');ov.className='fim-overlay';ov.id='fimOverlay';
+  ov.innerHTML=`
+    <div class="fim-box">
+      <span class="fim-trophy">${emoji}</span>
+      <div class="fim-title">Fim do Jogo!</div>
+      <div class="fim-sub">${msg}</div>
+      <div class="fim-stats">
+        <div class="fim-stat"><strong>${correctC}</strong><small>Corretas</small></div>
+        <div class="fim-stat"><strong>${wrongC}</strong><small>Erradas</small></div>
+        <div class="fim-stat"><strong>${pct}%</strong><small>Taxa de acerto</small></div>
+      </div>
+      <button class="fim-btn" onclick="reiniciarJogo()">🔄 Jogar de novo</button>
+    </div>`;
+  document.body.appendChild(ov);
+}
+
+function reiniciarJogo(){
+  const ov=document.getElementById('fimOverlay');if(ov)ov.remove();
+  totalR=0;correctC=0;wrongC=0;usedQ=[];usedN=[];phase=0;pendingName='';pendingQ=null;
+  updateScore();
+  document.getElementById('confMsg').textContent='';
+  document.getElementById('popupArea').innerHTML='<p class="waiting-hint"><span>Gira a roleta para sortear um colega e depois a questão</span></p>';
+  const sb=document.getElementById('spinBtn');
+  sb.textContent='🎲 Girar';sb.onclick=handleSpin;sb.disabled=false;
+  drawWheel(currentAngle);
+}
+
+/* --- ECRÃ INTEIRO --- */
+function toggleFullscreen(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen&&document.exitFullscreen();
+  }
+}
+function updateFsBtn(){
+  const icon=document.getElementById('fsIconSvg');
+  const label=document.getElementById('fsLabel');
+  if(document.fullscreenElement){
+    icon.innerHTML=`<polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/>`;
+    label.textContent='Sair (ESC)';
+  } else {
+    icon.innerHTML=`<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>`;
+    label.textContent='Ecrã inteiro';
+  }
+}
+document.addEventListener('fullscreenchange',updateFsBtn);
+document.addEventListener('webkitfullscreenchange',updateFsBtn);
+</script>
+</body>
+</html>
