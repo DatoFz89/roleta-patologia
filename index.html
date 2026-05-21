@@ -211,16 +211,16 @@ canvas{border-radius:50%;display:block;box-shadow:0 0 60px rgba(55,138,221,.3),0
         </div>
       </div>
 
-      <button class="spin-btn" id="spinBtn">Parte um</button>
+      <button class="spin-btn" id="spinBtn" disabled>Parte um</button>
       <p class="conf-msg" id="confMsg"></p>
     </div>
 
     <div class="popup-area" id="popupArea">
       <div class="phase-box">
-        <button class="phase-btn" id="phaseBtn">Parte um</button>
+        <button class="phase-btn" id="phaseBtn">Iniciar Parte um</button>
         <div class="phase-note">
           Clique para iniciar a primeira parte.<br>
-          Depois de 9 colegas e 9 questões, aparece a Parte dois.
+          A roleta sorteará primeiro o colega, depois a questão.
         </div>
       </div>
     </div>
@@ -228,6 +228,7 @@ canvas{border-radius:50%;display:block;box-shadow:0 0 60px rgba(55,138,221,.3),0
 </div>
 
 <script>
+/* ── DADOS ─────────────────────────────────────────────────── */
 const PART1_QUESTIONS = [
   {
     q:"Qual é a principal função da Patologia Clínica?",
@@ -342,13 +343,12 @@ const PART2_QUESTIONS = [
   }
 ];
 
-const PART1_NAMES = ["Carlos","Célia","Gabriel","Gisela","Goreti","Manuela","Márcia","Mariana","Sandra"];
-const PART2_NAMES = ["Carlos","Célia","Gabriel","Gisela","Goreti","Manuela","Márcia","Mariana","Sandra"];
+const NAMES = ["Carlos","Célia","Gabriel","Gisela","Goreti","Manuela","Márcia","Mariana","Sandra"];
 
-const PARTS = [
-  { label: "Parte um", names: PART1_NAMES, questions: PART1_QUESTIONS, type: "mcq" },
-  { label: "Parte dois", names: PART2_NAMES, questions: PART2_QUESTIONS, type: "tf" }
-];
+/* ── MODO ATUAL: 'names' ou 'questions' ────────────────────── */
+// spinMode controla o que a roleta vai sortear na próxima volta
+// 'names'     → sorteio de colega
+// 'questions' → sorteio de questão (após colega já escolhido)
 
 const COLORS = [
   ["#378ADD","#185FA5"],["#1D9E75","#0F6E56"],["#D85A30","#993C1D"],
@@ -356,217 +356,207 @@ const COLORS = [
   ["#E24B4A","#A32D2D"],["#5DCAA5","#0F6E56"],["#639922","#3B6D11"]
 ];
 
+/* ── ESTADO ─────────────────────────────────────────────────── */
 const canvas = document.getElementById('wheel');
-const ctx = canvas.getContext('2d');
+const ctx    = canvas.getContext('2d');
 
-let phaseIndex = -1;
-let phase = null;
-let N = 9;
-let arc = (2 * Math.PI) / N;
-let spinning = false;
+let partIndex    = -1;   // 0 = parte 1, 1 = parte 2
+let partData     = null; // { label, questions, type }
+let spinMode     = 'names';   // 'names' | 'questions'
+let usedNames    = [];
+let usedQuestions= [];
+let pendingName  = '';   // colega já sorteado, aguarda questão
+let partRound    = 0;    // questões respondidas nesta parte
+let spinning     = false;
 let currentAngle = 0;
 
 let totalR = 0, correctC = 0, wrongC = 0;
-let usedQ = [], usedN = [];
-let pendingName = '', pendingQ = null;
-let currentPart = null;
-let partRound = 0;
-let phaseStarted = false;
-let awaitingPartStart = true;
 
-function setupPhase(idx){
-  phaseIndex = idx;
-  phase = PARTS[idx];
-  N = phase.names.length;
-  arc = (2 * Math.PI) / N;
-  usedQ = [];
-  usedN = [];
-  pendingName = '';
-  pendingQ = null;
-  partRound = 0;
-  phaseStarted = true;
-  awaitingPartStart = false;
-  document.getElementById('phaseBtn').style.display = 'none';
-  document.getElementById('spinBtn').style.display = 'inline-block';
-  document.getElementById('spinBtn').textContent = 'Girar';
-  document.getElementById('spinBtn').disabled = false;
-  document.getElementById('confMsg').textContent = '';
-  document.getElementById('popupArea').innerHTML = `
-    <p class="waiting-hint"><span>Gira a roleta para sortear um colega e depois a questão</span></p>
-  `;
-  drawWheel(currentAngle);
-}
+/* ── PARTIDAS ───────────────────────────────────────────────── */
+const PARTS = [
+  { label:"Parte um",  questions: PART1_QUESTIONS, type:"mcq" },
+  { label:"Parte dois",questions: PART2_QUESTIONS, type:"tf"  }
+];
 
-function startPart1(){
-  setupPhase(0);
-}
+/* ── ÁUDIO ──────────────────────────────────────────────────── */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let actx = null;
+function getACtx(){ if(!actx) actx = new AudioCtx(); return actx; }
+function playTick(){ try{ const a=getACtx(),o=a.createOscillator(),g=a.createGain(); o.connect(g);g.connect(a.destination);o.type='sine';o.frequency.setValueAtTime(800,a.currentTime);g.gain.setValueAtTime(0.06,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.04);o.start();o.stop(a.currentTime+0.04);}catch(e){}}
+function playPop(){  try{ const a=getACtx(),o=a.createOscillator(),g=a.createGain(); o.connect(g);g.connect(a.destination);o.type='sine';o.frequency.setValueAtTime(440,a.currentTime);o.frequency.exponentialRampToValueAtTime(880,a.currentTime+0.1);g.gain.setValueAtTime(0.15,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.15);o.start();o.stop(a.currentTime+0.15);}catch(e){}}
+function playWin(){  try{ const a=getACtx();[523,659,784,1047].forEach((f,i)=>{ const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.type='sine';o.frequency.value=f;const t=a.currentTime+i*0.12;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.18,t+0.03);g.gain.exponentialRampToValueAtTime(0.001,t+0.25);o.start(t);o.stop(t+0.25);});}catch(e){}}
+function playWrong(){try{ const a=getACtx();[330,220].forEach((f,i)=>{ const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.type='sawtooth';o.frequency.value=f;const t=a.currentTime+i*0.15;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.1,t+0.03);g.gain.exponentialRampToValueAtTime(0.001,t+0.2);o.start(t);o.stop(t+0.2);});}catch(e){}}
+function playFanfare(){try{const a=getACtx();[523,659,784,1047,784,1047,1047,1319].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.type='sine';o.frequency.value=f;const t=a.currentTime+[0,.15,.30,.45,.65,.80,1.00,1.15][i];g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.22,t+0.04);g.gain.exponentialRampToValueAtTime(0.001,t+0.28);o.start(t);o.stop(t+0.3);});}catch(e){}}
 
-function startPart2(){
-  setupPhase(1);
-}
-
+/* ── ESTRELAS ───────────────────────────────────────────────── */
 (function(){
   const cont = document.getElementById('starsContainer');
   for(let i=0;i<60;i++){
-    const s=document.createElement('div');
-    s.className='star';
+    const s=document.createElement('div');s.className='star';
     const sz=Math.random()*2+1;
     s.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*3}s`;
     cont.appendChild(s);
   }
 })();
 
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
-let actx = null;
-function getACtx(){ if(!actx) actx = new AudioCtx(); return actx; }
-
-function playTick(){ try{ const a=getACtx(), o=a.createOscillator(), g=a.createGain(); o.connect(g); g.connect(a.destination); o.type='sine'; o.frequency.setValueAtTime(800,a.currentTime); g.gain.setValueAtTime(0.06,a.currentTime); g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.04); o.start(); o.stop(a.currentTime+0.04);}catch(e){} }
-function playPop(){ try{ const a=getACtx(), o=a.createOscillator(), g=a.createGain(); o.connect(g); g.connect(a.destination); o.type='sine'; o.frequency.setValueAtTime(440,a.currentTime); o.frequency.exponentialRampToValueAtTime(880,a.currentTime+0.1); g.gain.setValueAtTime(0.15,a.currentTime); g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.15); o.start(); o.stop(a.currentTime+0.15);}catch(e){} }
-function playWin(){ try{ const a=getACtx(); [523,659,784,1047].forEach((f,i)=>{ const o=a.createOscillator(), g=a.createGain(); o.connect(g); g.connect(a.destination); o.type='sine'; o.frequency.value=f; const t=a.currentTime+i*0.12; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.18,t+0.03); g.gain.exponentialRampToValueAtTime(0.001,t+0.25); o.start(t); o.stop(t+0.25); }); }catch(e){} }
-function playWrong(){ try{ const a=getACtx(); [330,220].forEach((f,i)=>{ const o=a.createOscillator(), g=a.createGain(); o.connect(g); g.connect(a.destination); o.type='sawtooth'; o.frequency.value=f; const t=a.currentTime+i*0.15; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.1,t+0.03); g.gain.exponentialRampToValueAtTime(0.001,t+0.2); o.start(t); o.stop(t+0.2); }); }catch(e){} }
-function playFanfare(){ try{ const a=getACtx(); [523,659,784,1047,784,1047,1047,1319].forEach((f,i)=>{ const o=a.createOscillator(),g=a.createGain(); o.connect(g); g.connect(a.destination); o.type='sine'; o.frequency.value=f; const t=a.currentTime+[0,.15,.30,.45,.65,.80,1.00,1.15][i]; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.22,t+0.04); g.gain.exponentialRampToValueAtTime(0.001,t+0.28); o.start(t); o.stop(t+0.3); }); }catch(e){} }
-
-function drawWheel(angle){
-  const cx = 240, cy = 240, r = 232;
+/* ── DESENHAR ROLETA ─────────────────────────────────────────── */
+// items = array de strings a mostrar nos segmentos
+function drawWheel(angle, items){
+  const n = items.length;
+  const arc = (2*Math.PI)/n;
+  const cx=240, cy=240, r=232;
   ctx.clearRect(0,0,480,480);
-  for(let i=0;i<N;i++){
-    const s = angle + i*arc, e = s + arc;
-    const grad = ctx.createRadialGradient(cx,cy,70,cx,cy,r);
-    grad.addColorStop(0,COLORS[i][0]);
-    grad.addColorStop(1,COLORS[i][1]);
-    ctx.beginPath();
-    ctx.moveTo(cx,cy);
-    ctx.arc(cx,cy,r,s,e);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+  for(let i=0;i<n;i++){
+    const s=angle+i*arc, e=s+arc;
+    const grad=ctx.createRadialGradient(cx,cy,70,cx,cy,r);
+    grad.addColorStop(0,COLORS[i%COLORS.length][0]);
+    grad.addColorStop(1,COLORS[i%COLORS.length][1]);
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,s,e);ctx.closePath();
+    ctx.fillStyle=grad;ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.7)';ctx.lineWidth=2;ctx.stroke();
 
     ctx.save();
     ctx.translate(cx,cy);
-    ctx.rotate(s + arc/2);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    ctx.font = 'bold 16px sans-serif';
-    if(phase){
-      ctx.fillText(phase.type === 'tf' ? `Q${i+1}` : phase.questions[i] ? `Q${i+1}` : `Q${i+1}`, r - 16, 6);
-    }else{
-      ctx.fillText(currentPart ? currentPart.names[i] : '', r - 16, 6);
-    }
+    ctx.rotate(s+arc/2);
+    ctx.textAlign='right';
+    ctx.fillStyle='rgba(255,255,255,0.95)';
+    ctx.font='bold 16px sans-serif';
+    ctx.fillText(items[i], r-16, 6);
     ctx.restore();
   }
-  ctx.beginPath();
-  ctx.arc(cx,cy,32,0,2*Math.PI);
-  const hg = ctx.createRadialGradient(cx-6,cy-6,2,cx,cy,32);
-  hg.addColorStop(0,'#ffffff');
-  hg.addColorStop(1,'#e0e0e0');
-  ctx.fillStyle = hg;
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  // hub
+  ctx.beginPath();ctx.arc(cx,cy,32,0,2*Math.PI);
+  const hg=ctx.createRadialGradient(cx-6,cy-6,2,cx,cy,32);
+  hg.addColorStop(0,'#ffffff');hg.addColorStop(1,'#e0e0e0');
+  ctx.fillStyle=hg;ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=2;ctx.stroke();
 }
-drawWheel(0);
 
-function getSegmentAtPointer(angle){
-  let a = ((Math.PI-angle)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
-  return Math.floor(a/arc)%N;
+function currentItems(){
+  // O que mostrar na roleta depende do modo
+  if(!partData) return NAMES;
+  return spinMode === 'names' ? NAMES : partData.questions.map((_,i)=>`Q${i+1}`);
+}
+
+drawWheel(0, NAMES);
+
+/* ── HELPERS ─────────────────────────────────────────────────── */
+function getSegmentAtPointer(angle, n){
+  const arc=(2*Math.PI)/n;
+  let a=((Math.PI-angle)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+  return Math.floor(a/arc)%n;
 }
 
 function pickRandom(len, used){
-  const avail = [...Array(len).keys()].filter(i => !used.includes(i));
-  if(!avail.length){
-    used.length = 0;
-    return Math.floor(Math.random()*len);
-  }
+  const avail=[...Array(len).keys()].filter(i=>!used.includes(i));
+  if(!avail.length){ used.length=0; return Math.floor(Math.random()*len); }
   return avail[Math.floor(Math.random()*avail.length)];
 }
 
 function updateScore(){
-  document.getElementById('sc-total').textContent = totalR;
+  document.getElementById('sc-total').textContent   = totalR;
   document.getElementById('sc-correct').textContent = correctC;
-  document.getElementById('sc-wrong').textContent = wrongC;
-  document.getElementById('sc-pct').textContent = totalR>0 ? Math.round((correctC/totalR)*100)+'%' : '—';
+  document.getElementById('sc-wrong').textContent   = wrongC;
+  document.getElementById('sc-pct').textContent     = totalR>0 ? Math.round(correctC/totalR*100)+'%' : '—';
 }
 
+function setSpinBtn(text, enabled){
+  const btn = document.getElementById('spinBtn');
+  btn.textContent = text;
+  btn.disabled = !enabled;
+}
+
+/* ── SETUP DE PARTE ──────────────────────────────────────────── */
+function setupPart(idx){
+  partIndex  = idx;
+  partData   = PARTS[idx];
+  spinMode   = 'names';
+  usedNames  = [];
+  usedQuestions = [];
+  pendingName   = '';
+  partRound     = 0;
+
+  drawWheel(currentAngle, NAMES);
+  setSpinBtn('Girar — Sortear Colega', true);
+  document.getElementById('spinBtn').onclick = handleSpin;
+  document.getElementById('confMsg').textContent = '';
+  document.getElementById('popupArea').innerHTML =
+    '<p class="waiting-hint"><span>Gira a roleta para sortear um colega!</span></p>';
+}
+
+/* ── SPIN ─────────────────────────────────────────────────────── */
 function handleSpin(){
-  if(spinning || !phaseStarted) return;
+  if(spinning || !partData) return;
   getACtx();
   spinning = true;
-  document.getElementById('spinBtn').disabled = true;
-  document.getElementById('popupArea').innerHTML = '<p class="waiting-hint"><span>A girar...</span></p>';
+  setSpinBtn('A girar…', false);
 
+  const items = currentItems();
+  const n     = items.length;
+  const arc   = (2*Math.PI)/n;
+
+  // Escolher índice alvo
   let targetIdx;
-  if(!currentPart) return;
-
-  if(!pendingName){
-    targetIdx = pickRandom(currentPart.names.length, usedN);
-    usedN.push(targetIdx);
-  }else{
-    targetIdx = pickRandom(currentPart.questions.length, usedQ);
-    usedQ.push(targetIdx);
+  if(spinMode === 'names'){
+    targetIdx = pickRandom(NAMES.length, usedNames);
+    usedNames.push(targetIdx);
+  } else {
+    targetIdx = pickRandom(partData.questions.length, usedQuestions);
+    usedQuestions.push(targetIdx);
   }
 
   const segCenter = Math.PI - (targetIdx + 0.5) * arc;
   const fullSpins = (6 + Math.floor(Math.random()*4)) * 2*Math.PI;
-  const jitter = (Math.random() - 0.5) * arc * 0.65;
+  const jitter    = (Math.random()-0.5)*arc*0.65;
   let delta = (segCenter + jitter - currentAngle) % (2*Math.PI);
   if(delta < 0) delta += 2*Math.PI;
   const total = fullSpins + delta;
-  const dur = 3800, t0 = performance.now(), sa = currentAngle;
-  let lastSeg = -1, tickCount = 0;
+  const dur=3800, t0=performance.now(), sa=currentAngle;
+  let lastSeg=-1, tickCount=0;
 
-  function ease(t){ return 1 - Math.pow(1-t,4); }
+  function ease(t){ return 1-Math.pow(1-t,4); }
 
   function animate(now){
-    const el = now - t0, t = Math.min(el/dur, 1);
-    currentAngle = sa + total * ease(t);
-    drawWheel(currentAngle);
-    const seg = getSegmentAtPointer(currentAngle);
-    if(seg !== lastSeg){
-      lastSeg = seg;
-      tickCount++;
-      if(tickCount > 3) playTick();
-    }
-    if(t < 1){
+    const el=now-t0, t=Math.min(el/dur,1);
+    currentAngle = sa + total*ease(t);
+    drawWheel(currentAngle, items);
+    const seg = getSegmentAtPointer(currentAngle, n);
+    if(seg!==lastSeg){ lastSeg=seg; tickCount++; if(tickCount>3) playTick(); }
+    if(t<1){
       requestAnimationFrame(animate);
-    }else{
+    } else {
       spinning = false;
-      drawWheel(currentAngle);
-      if(!pendingName){
-        pendingName = currentPart.names[targetIdx];
+      drawWheel(currentAngle, items);
+      if(spinMode==='names'){
+        pendingName = NAMES[targetIdx];
+        spinMode = 'questions';
+        drawWheel(currentAngle, partData.questions.map((_,i)=>`Q${i+1}`));
         showNameBalloon(pendingName);
-      }else{
-        pendingQ = currentPart.questions[targetIdx];
-        showQuestionBalloon(pendingName, pendingQ, targetIdx);
+        setSpinBtn('Girar — Sortear Questão', true);
+        document.getElementById('spinBtn').onclick = handleSpin;
+      } else {
+        const q = partData.questions[targetIdx];
+        showQuestionBalloon(pendingName, q, targetIdx);
+        setSpinBtn('Aguarda resposta…', false);
       }
     }
   }
   requestAnimationFrame(animate);
 }
 
+/* ── BALÕES ──────────────────────────────────────────────────── */
 function showNameBalloon(name){
   playPop();
   const area = document.getElementById('popupArea');
   area.innerHTML = '';
-  const wrap = document.createElement('div');
-  wrap.className = 'balloon-wrap';
-  const bal = document.createElement('div');
-  bal.className = 'balloon';
+  const wrap = document.createElement('div'); wrap.className='balloon-wrap';
+  const bal  = document.createElement('div'); bal.className='balloon';
   bal.innerHTML = `
     <span class="badge badge-name">Colega sorteado</span>
     <h3>É a vez de...</h3>
     <div class="big-name">${name}</div>
-    <p class="name-hint">Agora gira para a questão!</p>
+    <p class="name-hint">Agora gira para sortear a questão!</p>
   `;
-  const btn = document.createElement('button');
-  btn.className = 'balloon-btn';
-  btn.style.marginTop = '14px';
-  btn.textContent = 'Girar para a questão →';
-  btn.onclick = handleSpin;
-  bal.appendChild(btn);
   wrap.appendChild(bal);
   area.appendChild(wrap);
 }
@@ -575,118 +565,92 @@ function showQuestionBalloon(name, q, qi){
   playPop();
   const area = document.getElementById('popupArea');
   area.innerHTML = '';
-  const wrap = document.createElement('div');
-  wrap.className = 'balloon-wrap';
-  const bal = document.createElement('div');
-  bal.className = 'balloon';
+  const wrap = document.createElement('div'); wrap.className='balloon-wrap';
+  const bal  = document.createElement('div'); bal.className='balloon';
 
-  const hdr = document.createElement('div');
-  hdr.innerHTML = `<span class="badge badge-q">${currentPart.label} — ${currentPart.type === 'tf' ? 'V/F' : 'Questão ' + (qi+1)}</span><h3>${q.q}</h3>`;
-  bal.appendChild(hdr);
+  const badge = partData.type==='tf' ? 'V/F' : `Questão ${qi+1}`;
+  bal.innerHTML = `<span class="badge badge-q">${partData.label} — ${badge}</span><h3>${q.q}</h3>`;
 
-  const optsDiv = document.createElement('div');
-  optsDiv.className = 'opts';
-  const expBox = document.createElement('div');
-  expBox.className = 'exp-box';
-  const contBtn = document.createElement('button');
-  contBtn.className = 'balloon-btn';
-  contBtn.style.display = 'none';
+  const optsDiv = document.createElement('div'); optsDiv.className='opts';
+  const expBox  = document.createElement('div'); expBox.className='exp-box';
+  const contBtn = document.createElement('button'); contBtn.className='balloon-btn'; contBtn.style.display='none';
 
   q.opts.forEach((o,i)=>{
-    const b = document.createElement('button');
-    b.className = 'opt-btn';
-    if(currentPart.type === 'tf'){
-      b.textContent = o;
-    }else{
-      b.textContent = String.fromCharCode(65+i) + ') ' + o;
-    }
-    b.onclick = () => answer(i, q.correct, optsDiv, expBox, contBtn);
+    const b = document.createElement('button'); b.className='opt-btn';
+    b.textContent = partData.type==='tf' ? o : String.fromCharCode(65+i)+') '+o;
+    b.onclick = ()=> answer(i, q.correct, optsDiv, expBox, contBtn);
     optsDiv.appendChild(b);
   });
 
-  bal.appendChild(optsDiv);
-
   expBox.textContent = q.exp;
-  bal.appendChild(expBox);
 
-  contBtn.textContent = 'Próxima rodada →';
+  contBtn.textContent = (partRound+1 >= 9) ? 'Avançar para a próxima parte →' : 'Próxima rodada →';
   contBtn.onclick = ()=>{
-    phase = null;
-    pendingName = '';
-    pendingQ = null;
+    partRound++;
     if(partRound >= 9){
-      finishPart();
-      return;
+      finishPart(); return;
     }
-    area.innerHTML = '<p class="waiting-hint"><span>Gira a roleta para sortear um colega e depois a questão</span></p>';
-    const sb = document.getElementById('spinBtn');
-    sb.disabled = false;
-    sb.textContent = 'Girar';
-    sb.onclick = handleSpin;
+    // Volta ao modo nomes para nova rodada
+    spinMode    = 'names';
+    pendingName = '';
+    drawWheel(currentAngle, NAMES);
+    area.innerHTML = '<p class="waiting-hint"><span>Gira a roleta para sortear um colega!</span></p>';
+    setSpinBtn('Girar — Sortear Colega', true);
+    document.getElementById('spinBtn').onclick = handleSpin;
   };
 
+  bal.appendChild(optsDiv);
+  bal.appendChild(expBox);
   bal.appendChild(contBtn);
   wrap.appendChild(bal);
   area.appendChild(wrap);
 }
 
+/* ── RESPOSTA ────────────────────────────────────────────────── */
 function answer(chosen, correct, optsDiv, expBox, contBtn){
   optsDiv.querySelectorAll('.opt-btn').forEach((b,i)=>{
-    b.disabled = true;
-    if(i === correct) b.classList.add('correct');
-    else if(i === chosen) b.classList.add('wrong');
+    b.disabled=true;
+    if(i===correct) b.classList.add('correct');
+    else if(i===chosen) b.classList.add('wrong');
   });
-  expBox.style.display = 'block';
-  contBtn.style.display = 'block';
+  expBox.style.display='block';
+  contBtn.style.display='block';
   totalR++;
-  partRound++;
-  if(chosen === correct){
-    correctC++;
-    playWin();
-  }else{
-    wrongC++;
-    playWrong();
-  }
+  if(chosen===correct){ correctC++; playWin(); } else { wrongC++; playWrong(); }
   updateScore();
-  if(partRound >= 9){
-    contBtn.textContent = 'Avançar para a próxima parte →';
-  }
+  setSpinBtn('Vê a resposta acima', false);
 }
 
+/* ── FIM DE PARTE ─────────────────────────────────────────────── */
 function finishPart(){
-  if(phaseIndex === 0){
+  if(partIndex===0){
     document.getElementById('popupArea').innerHTML = `
       <div class="phase-box">
-        <button class="phase-btn" id="phaseTwoBtn">Parte dois</button>
+        <button class="phase-btn" id="phaseTwoBtn">Iniciar Parte dois</button>
         <div class="phase-note">
-          Terminaste a primeira parte. Clica para reiniciar a roleta com o segundo bloco de questões.
+          Terminaste a primeira parte! Clica para continuar com o segundo bloco (Verdadeiro/Falso).
         </div>
-      </div>
-    `;
-    document.getElementById('phaseTwoBtn').onclick = startPart2;
-    document.getElementById('spinBtn').disabled = true;
-    document.getElementById('spinBtn').textContent = 'Parte um concluída';
-    currentPart = null;
-    phaseStarted = false;
-    awaitingPartStart = true;
-  }else{
-    setTimeout(playFanfare,300);
+      </div>`;
+    document.getElementById('phaseTwoBtn').onclick = ()=> setupPart(1);
+    setSpinBtn('Parte um concluída', false);
+    drawWheel(currentAngle, NAMES);
+  } else {
+    setTimeout(playFanfare, 300);
     showFimPopup();
   }
 }
 
+/* ── FIM DO JOGO ─────────────────────────────────────────────── */
 function showFimPopup(){
-  const pct = totalR > 0 ? Math.round(correctC/totalR*100) : 0;
-  let emoji = '🏁', msg = 'Bom trabalho!';
-  if(pct >= 90){ emoji = '🏆'; msg = 'Excelente!'; }
-  else if(pct >= 70){ emoji = '👏'; msg = 'Muito bom resultado!'; }
-  else if(pct >= 50){ emoji = '🙂'; msg = 'Bom esforço, podem melhorar!'; }
-  else{ emoji = '📚'; msg = 'Hora de estudar mais!'; }
+  const pct = totalR>0 ? Math.round(correctC/totalR*100) : 0;
+  let emoji='🏁', msg='Bom trabalho!';
+  if(pct>=90){emoji='🏆';msg='Excelente!';}
+  else if(pct>=70){emoji='👏';msg='Muito bom resultado!';}
+  else if(pct>=50){emoji='🙂';msg='Bom esforço, podem melhorar!';}
+  else{emoji='📚';msg='Hora de estudar mais!';}
 
-  const ov = document.createElement('div');
-  ov.className = 'fim-overlay';
-  ov.id = 'fimOverlay';
-  ov.innerHTML = `
+  const ov=document.createElement('div'); ov.className='fim-overlay'; ov.id='fimOverlay';
+  ov.innerHTML=`
     <div class="fim-box">
       <span class="fim-trophy">${emoji}</span>
       <div class="fim-title">Fim do Jogo!</div>
@@ -697,69 +661,53 @@ function showFimPopup(){
         <div class="fim-stat"><strong>${pct}%</strong><small>Taxa de acerto</small></div>
       </div>
       <button class="fim-btn" onclick="reiniciarJogo()">Jogar de novo</button>
-    </div>
-  `;
+    </div>`;
   document.body.appendChild(ov);
 }
 
 function reiniciarJogo(){
-  const ov = document.getElementById('fimOverlay');
-  if(ov) ov.remove();
-  totalR = 0; correctC = 0; wrongC = 0;
-  usedQ = []; usedN = [];
-  phaseIndex = -1;
-  phase = null;
-  pendingName = '';
-  pendingQ = null;
-  currentPart = null;
-  partRound = 0;
-  phaseStarted = false;
-  awaitingPartStart = true;
-  updateScore();
-  document.getElementById('confMsg').textContent = '';
-  document.getElementById('popupArea').innerHTML = `
+  const ov=document.getElementById('fimOverlay'); if(ov) ov.remove();
+  totalR=0; correctC=0; wrongC=0; updateScore();
+  partIndex=-1; partData=null; spinMode='names';
+  usedNames=[]; usedQuestions=[]; pendingName=''; partRound=0;
+  currentAngle=0;
+  drawWheel(0, NAMES);
+  setSpinBtn('Parte um', false);
+  document.getElementById('confMsg').textContent='';
+  document.getElementById('popupArea').innerHTML=`
     <div class="phase-box">
-      <button class="phase-btn" id="phaseBtn">Parte um</button>
+      <button class="phase-btn" id="phaseBtn">Iniciar Parte um</button>
       <div class="phase-note">
         Clique para iniciar a primeira parte.<br>
-        Depois de 9 colegas e 9 questões, aparece a Parte dois.
+        A roleta sorteará primeiro o colega, depois a questão.
       </div>
-    </div>
-  `;
-  document.getElementById('phaseBtn').onclick = startPart1;
-  document.getElementById('spinBtn').textContent = 'Parte um';
-  document.getElementById('spinBtn').disabled = true;
-  drawWheel(currentAngle);
+    </div>`;
+  document.getElementById('phaseBtn').onclick = ()=> setupPart(0);
 }
 
+/* ── FULLSCREEN ──────────────────────────────────────────────── */
 function toggleFullscreen(){
   if(!document.fullscreenElement){
     document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
-  }else{
+  } else {
     document.exitFullscreen && document.exitFullscreen();
   }
 }
 function updateFsBtn(){
-  const icon = document.getElementById('fsIconSvg');
-  const label = document.getElementById('fsLabel');
+  const icon=document.getElementById('fsIconSvg'), label=document.getElementById('fsLabel');
   if(document.fullscreenElement){
-    icon.innerHTML = `<polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/>`;
-    label.textContent = 'Sair (ESC)';
-  }else{
-    icon.innerHTML = `<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>`;
-    label.textContent = 'Ecrã inteiro';
+    icon.innerHTML=`<polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/>`;
+    label.textContent='Sair (ESC)';
+  } else {
+    icon.innerHTML=`<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>`;
+    label.textContent='Ecrã inteiro';
   }
 }
 document.addEventListener('fullscreenchange', updateFsBtn);
 document.addEventListener('webkitfullscreenchange', updateFsBtn);
 
-document.getElementById('phaseBtn').onclick = startPart1;
-document.getElementById('spinBtn').onclick = ()=>{};
-document.getElementById('spinBtn').disabled = true;
-document.getElementById('spinBtn').textContent = 'Parte um';
-
-currentPart = null;
-drawWheel(currentAngle);
+/* ── ARRANQUE ────────────────────────────────────────────────── */
+document.getElementById('phaseBtn').onclick = ()=> setupPart(0);
 </script>
 </body>
 </html>
