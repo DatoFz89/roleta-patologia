@@ -231,115 +231,115 @@ canvas{border-radius:50%;display:block;box-shadow:0 0 60px rgba(55,138,221,.3),0
 /* ── DADOS ─────────────────────────────────────────────────── */
 const PART1_QUESTIONS = [
   {
-    q:"Qual é a principal função da Patologia Clínica?",
-    opts:["Realizar cirurgias aos utentes","Analisar amostras biológicas para apoiar o diagnóstico","Prescrever medicamentos aos doentes","Gerir os recursos humanos do hospital"],
+    q:"Qual é a norma internacional específica para laboratórios clínicos, reconhecida em Portugal pelo IPAC?",
+    opts:["ISO 9001","ISO 15189","PNAEQ","ISO 17025"],
     correct:1,
-    exp:"A Patologia Clínica analisa amostras biológicas para apoiar o diagnóstico, monitorizar tratamentos e ajudar na deteção de doenças."
+    exp:"A ISO 15189 é a norma internacional específica para laboratórios clínicos. Garante competência técnica e qualidade dos resultados, sendo reconhecida em Portugal pelo IPAC."
   },
   {
-    q:"Qual é a ordem correta das fases do processo laboratorial?",
-    opts:["Analítica → Pré-analítica → Pós-analítica","Pré-analítica → Analítica → Pós-analítica","Pós-analítica → Analítica → Pré-analítica","Pré-analítica → Pós-analítica → Analítica"],
-    correct:1,
-    exp:"O processo segue a sequência: pré-analítica, analítica e pós-analítica."
-  },
-  {
-    q:"Qual é o setor responsável pela identificação de bactérias e antibiogramas?",
-    opts:["Hematologia","Bioquímica","Imunologia","Microbiologia"],
-    correct:3,
-    exp:"A Microbiologia identifica microrganismos como bactérias e fungos e pode realizar antibiogramas."
-  },
-  {
-    q:"Qual é o tubo de colheita usado para o hemograma?",
-    opts:["Tubo gel amarelo","Tubo citrato azul","Tubo EDTA violeta","Tubo fluoreto cinzento"],
+    q:"Qual a percentagem aproximada de erros laboratoriais que ocorre na fase pré-analítica?",
+    opts:["10 a 15%","15 a 25%","60 a 70%","80 a 90%"],
     correct:2,
-    exp:"O tubo EDTA violeta é o mais usado para hemograma porque preserva corretamente as células sanguíneas."
+    exp:"A fase pré-analítica concentra 60 a 70% dos erros laboratoriais, tornando-a a mais crítica de todo o processo."
   },
   {
-    q:"O que deve conter uma requisição médica?",
-    opts:["Apenas o nome do utente e as análises","Nome, data de nascimento, nº SNS, diagnóstico e análises a realizar","Nome e telefone do médico","Só o diagnóstico e o nº de utente"],
+    q:"Qual é a ordem correta de colheita dos tubos (OCD)?",
+    opts:["EDTA → citrato → gel","Citrato → gel → EDTA","Gel → EDTA → citrato","Citrato → EDTA → gel"],
     correct:1,
-    exp:"A requisição deve identificar corretamente o utente e especificar o pedido analítico."
+    exp:"A Ordem Correta de Colheita é: primeiro citrato (azul), depois gel separador (amarelo) e por último EDTA (violeta), para evitar contaminação entre aditivos."
   },
   {
-    q:"Qual é a função principal do TAS na fase pré-analítica?",
-    opts:["Centrifugar e aliquotar as amostras","Validar clinicamente os resultados","Acolher o utente, verificar identidade e transportar amostras","Analisar amostras no analisador bioquímico"],
+    q:"Para que análise se usa o tubo com citrato de sódio (azul)?",
+    opts:["Hemograma completo","Glicémia em jejum","Estudo da coagulação (TP, APTT, fibrinogénio)","Marcadores tumorais"],
     correct:2,
-    exp:"O TAS participa na receção do utente, identificação, colheita/apoio e transporte correto das amostras."
+    exp:"O tubo azul contém citrato de sódio a 3,2% e é usado para o estudo da coagulação: TP, APTT e fibrinogénio."
   },
   {
-    q:"O que significa a sigla LIS no contexto laboratorial?",
-    opts:["Laboratory Imaging System","Laboratory Information System","Liquid Identification Software","Laboratory Integration Service"],
+    q:"O que é o antibiograma e em que setor é realizado?",
+    opts:["Estudo de anticorpos, realizado na Imunologia","Teste de sensibilidade a antibióticos, realizado na Microbiologia","Contagem de células, realizado na Hematologia","Análise hormonal, realizado na Bioquímica"],
     correct:1,
-    exp:"LIS significa Laboratory Information System e serve para gerir o fluxo de trabalho e a rastreabilidade das amostras."
+    exp:"O antibiograma testa a sensibilidade de bactérias a antibióticos e é realizado no setor de Microbiologia."
   },
   {
-    q:"Onde devem ser depositadas agulhas usadas no laboratório?",
-    opts:["Saco biohazard branco (Grupo III)","Contentor rígido amarelo (Grupo IV)","Lixo comum (Grupo I)","Saco negro de resíduos hospitalares"],
-    correct:1,
-    exp:"Agulhas e materiais cortantes vão para contentor rígido amarelo, por serem resíduos do Grupo IV."
+    q:"Qual dos seguintes equipamentos separa os componentes do sangue por força centrífuga?",
+    opts:["Microscópio óptico","Autoclave","Centrífuga","Câmara de fluxo laminar"],
+    correct:2,
+    exp:"A centrífuga separa os componentes do sangue por densidade usando a força centrífuga, sendo essencial antes das análises bioquímicas."
   },
   {
-    q:"Qual é a principal razão para a fase pré-analítica ser crítica?",
-    opts:["Porque é a fase mais longa do processo","Porque aí ocorrem muitos erros que afetam o resultado final","Porque só acontece em urgência","Porque substitui a análise laboratorial"],
-    correct:1,
-    exp:"A fase pré-analítica é crítica porque erros de identificação, colheita, transporte ou conservação alteram muito o resultado."
+    q:"O que faz o TAS na gestão de stocks do laboratório?",
+    opts:["Valida clinicamente os resultados das análises","Analisa as amostras nos equipamentos automáticos","Verifica e repõe consumíveis, regista validades e faz inventários","Decide quais amostras devem ser rejeitadas"],
+    correct:2,
+    exp:"O TAS colabora na reposição e organização dos materiais, verifica validades usando o método FEFO e realiza inventários periódicos."
+  },
+  {
+    q:"Qual é a função da câmara de fluxo laminar no laboratório?",
+    opts:["Conservar amostras a baixa temperatura","Esterilizar material reutilizável por vapor","Proteger o técnico e as amostras de contaminações","Amplificar sequências de ADN para diagnóstico molecular"],
+    correct:2,
+    exp:"A câmara de fluxo laminar protege o técnico e as amostras de contaminações. Usa filtros HEPA e limpeza UV, sendo usada em microbiologia e biologia molecular."
+  },
+  {
+    q:"Qual é o papel do médico patologista na fase pós-analítica?",
+    opts:["Realizar a colheita de sangue venoso","Transportar as amostras ao laboratório","Fazer a validação clínica e identificar valores críticos","Centrifugar e aliquotar as amostras"],
+    correct:2,
+    exp:"Na fase pós-analítica, o médico patologista interpreta os resultados no contexto clínico, identifica valores críticos e pode adicionar notas interpretativas ao relatório."
   }
 ];
 
 const PART2_QUESTIONS = [
   {
-    q:"A bioquímica clínica avalia substâncias como glicose, ureia e creatinina.",
-    opts:["Verdadeiro","Falso"],
-    correct:0,
-    exp:"Verdadeiro. A bioquímica clínica estuda vários parâmetros químicos do organismo, incluindo glicose, ureia, creatinina e enzimas."
-  },
-  {
-    q:"A hematologia dedica-se ao estudo do sangue e dos seus constituintes.",
-    opts:["Verdadeiro","Falso"],
-    correct:0,
-    exp:"Verdadeiro. A hematologia analisa células sanguíneas, hemograma, coagulação e outras alterações do sangue."
-  },
-  {
-    q:"A imunologia clínica estuda a resposta imunitária e pode ajudar no diagnóstico de infeções e doenças autoimunes.",
-    opts:["Verdadeiro","Falso"],
-    correct:0,
-    exp:"Verdadeiro. A imunologia clínica inclui serologia e estudos de anticorpos, antigénios e resposta imunitária."
-  },
-  {
-    q:"As amostras biológicas podem ser manuseadas sem regras de biossegurança, desde que o laboratório esteja limpo.",
+    q:"O TAS pode realizar colheitas de sangue venoso de forma autónoma.",
     opts:["Verdadeiro","Falso"],
     correct:1,
-    exp:"Falso. A biossegurança é sempre necessária, com EPI e procedimentos adequados, porque as amostras podem ser potencialmente infeciosas."
+    exp:"Falso. A colheita de sangue venoso é da competência exclusiva do enfermeiro ou do TSDT de Análises Clínicas. O TAS apoia o processo mas não realiza a colheita autonomamente."
   },
   {
-    q:"A fase pós-analítica inclui validação, registo e comunicação dos resultados.",
+    q:"O método FEFO significa que se deve usar primeiro o material com prazo de validade mais curto.",
     opts:["Verdadeiro","Falso"],
     correct:0,
-    exp:"Verdadeiro. Depois da análise, os resultados são validados, registados e comunicados aos profissionais de saúde."
+    exp:"Verdadeiro. FEFO significa 'First Expired, First Out': o material que expira primeiro deve ser utilizado primeiro, garantindo que nenhum consumível ultrapasse o prazo de validade."
   },
   {
-    q:"O controlo de qualidade é importante para garantir resultados laboratoriais fiáveis.",
+    q:"A câmara de fluxo laminar usa filtros HEPA e limpeza com UV para evitar contaminações.",
     opts:["Verdadeiro","Falso"],
     correct:0,
-    exp:"Verdadeiro. O controlo de qualidade ajuda a detetar falhas e a assegurar a fiabilidade dos resultados."
+    exp:"Verdadeiro. A câmara de fluxo laminar recorre a filtros HEPA e radiação UV para proteger o técnico e as amostras de contaminações em microbiologia e biologia molecular."
   },
   {
-    q:"Os resíduos biológicos sem cortantes podem ser colocados no lixo comum.",
+    q:"O PCR (termociclador) é usado para separar os componentes do sangue antes da análise bioquímica.",
     opts:["Verdadeiro","Falso"],
     correct:1,
-    exp:"Falso. Os resíduos biológicos seguem regras próprias de segregação e não devem ir para o lixo comum."
+    exp:"Falso. O PCR amplifica sequências de ADN/ARN para diagnóstico molecular. Quem separa os componentes do sangue é a centrífuga."
   },
   {
-    q:"A microbiologia pode estudar bactérias, vírus e fungos.",
+    q:"As amostras fotossensíveis devem ser protegidas da luz solar durante o transporte.",
     opts:["Verdadeiro","Falso"],
     correct:0,
-    exp:"Verdadeiro. A microbiologia clínica analisa agentes infeciosos e apoia o diagnóstico microbiológico."
+    exp:"Verdadeiro. Algumas amostras são fotossensíveis e degradam-se com a exposição à luz, pelo que devem ser protegidas durante todo o transporte."
   },
   {
-    q:"A identificação correta do utente é importante para evitar erros de amostragem e de resultados.",
+    q:"O contentor rígido amarelo destina-se apenas a resíduos de risco biológico sem perfurocortantes.",
+    opts:["Verdadeiro","Falso"],
+    correct:1,
+    exp:"Falso. O contentor rígido amarelo (Grupo IV) destina-se exatamente a materiais cortantes e perfurantes, como agulhas. Os resíduos biológicos sem cortantes vão para o saco branco do Grupo III."
+  },
+  {
+    q:"A rastreabilidade significa que cada amostra tem registo completo do percurso, do técnico e do equipamento usado.",
     opts:["Verdadeiro","Falso"],
     correct:0,
-    exp:"Verdadeiro. A identificação correta é uma etapa essencial da segurança e da qualidade laboratorial."
+    exp:"Verdadeiro. A rastreabilidade é um dos pilares da qualidade laboratorial e garante que é possível reconstituir todo o percurso de uma amostra."
+  },
+  {
+    q:"Na fase pós-analítica, os valores críticos ('panic values') devem ser comunicados imediatamente ao médico prescritor.",
+    opts:["Verdadeiro","Falso"],
+    correct:0,
+    exp:"Verdadeiro. Valores críticos são resultados que implicam risco imediato para o utente e exigem notificação urgente ao clínico prescritor, mesmo antes da emissão formal do relatório."
+  },
+  {
+    q:"O autoclave esteriliza material reutilizável através de vapor saturado a pressão, a cerca de 121°C.",
+    opts:["Verdadeiro","Falso"],
+    correct:0,
+    exp:"Verdadeiro. O autoclave usa vapor saturado sob pressão a 121°C durante 15 minutos para esterilizar material reutilizável e inativar resíduos biológicos antes da eliminação."
   }
 ];
 
